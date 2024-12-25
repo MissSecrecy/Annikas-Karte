@@ -56,12 +56,21 @@
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
     }).addTo(map);
 
-    // Marker-Icon anpassen
-    var customIcon = L.icon({
-      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-      iconSize: [35, 50], // Größerer Marker
-      iconAnchor: [17, 50]
-    });
+    // Funktion, die Marker-Größe basierend auf der Zoomstufe berechnet
+    function getMarkerSize(zoom) {
+      var size = Math.max(20, zoom * 5); // Basisgröße 20, skaliert mit Zoom
+      return [size, size * 1.5]; // Breite und Höhe
+    }
+
+    // Marker-Icon dynamisch erstellen
+    function createCustomIcon(zoom) {
+      var size = getMarkerSize(zoom);
+      return L.icon({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconSize: size, // Größe basierend auf Zoom
+        iconAnchor: [size[0] / 2, size[1]] // Ankerpunkt am unteren Rand des Icons
+      });
+    }
 
     // Wegpunkte mit Koordinaten und Fotos
     var waypoints = [
@@ -83,18 +92,32 @@
       {coords: [41.902, 12.496], photos: ['images/photo_rom.jpg', 'images/photo_rom2.jpg'], description: 'Rom'}
     ];
 
-    // Marker hinzufügen
-    var coordinates = [];
+    var markers = []; // Array, um Marker-Referenzen zu speichern
+
+    // Marker hinzufügen und speichern
     waypoints.forEach(point => {
       // Dynamische HTML-Generierung für Fotos und Videos
       var photoHtml = point.photos.map(photo => `<img src="${photo}" alt="Photo" width="150" style="margin: 5px;" onclick="openFullscreenImage('${photo}')">`).join('');
       var videoHtml = point.video ? `<video controls width="300" style="margin: 5px;"><source src="${point.video}" type="video/mp4">Your browser does not support the video tag.</video>` : '';
-      L.marker(point.coords, {icon: customIcon}).addTo(map)
+      var marker = L.marker(point.coords, {icon: createCustomIcon(map.getZoom())}).addTo(map)
         .bindPopup(`<h3>${point.description}</h3>${photoHtml}${videoHtml}`);
-      coordinates.push(point.coords);
+      markers.push(marker); // Marker-Referenz speichern
     });
 
+    // Funktion zum Aktualisieren der Marker-Größe beim Zoomen
+    function updateMarkerSizes() {
+      var currentZoom = map.getZoom();
+      markers.forEach(marker => {
+        var newIcon = createCustomIcon(currentZoom);
+        marker.setIcon(newIcon); // Marker-Icon aktualisieren
+      });
+    }
+
+    // Event-Listener für Zoomänderungen
+    map.on('zoomend', updateMarkerSizes);
+
     // Linienverbindung zwischen den Punkten
+    var coordinates = waypoints.map(point => point.coords);
     var polyline = L.polyline(coordinates, {color: 'blue'}).addTo(map);
     map.fitBounds(polyline.getBounds());
 
